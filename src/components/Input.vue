@@ -1,102 +1,80 @@
-<template>
-  <v-form>
-    <v-container>
-      <v-row>
-        <v-textarea 
-          variant="filled"
-          v-model="message"
-          append-icon="mdi-send"
-          prepend-icon="mdi-broom"
-          label="Message"
-          type="text"
-          rows="1"
-          auto-grow
-          max-rows="10"
-          maxlength="3000"
-          counter
-          @keydown.enter.exact.prevent="sendMessage"
-          @keydown.shift.enter.exact.prevent="addNewLine"
-          @click:append="sendMessage"
-          @click:prepend="startNewConversation"
-        >
-        </v-textarea>
-      </v-row>
-      <AuthDialog 
-      :show="showAuthDialog" 
-      @auth-changed="onAuthChanged" 
-      @dialog-closed="showAuthDialog = false" />
-    </v-container>
-  </v-form>
-</template>
+<script setup lang="ts">
+import { ref } from 'vue'
+import { Send, PlusCircle } from 'lucide-vue-next'
+import { Textarea } from './ui/textarea'
+import { Button } from './ui/button';
+import SiteFooter from './SiteFooter.vue';
+import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { useToast } from 'vue-toastification'
 
-<script>
-import AuthDialog from './AuthDialog.vue';
-import { auth } from "@/plugins/firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import { sendPrompt } from '@/api/ai'; 
+const message = ref('');
+const isUserSignedIn = ref(false);
+const toast = useToast();
 
-export default {
-  emits: ["messageSent", "clear-conversation", "message-sent", "message-received"],
-  components: {
-    AuthDialog,
-  },
+const emit = defineEmits(['send', 'clear-chat']);
 
-  data() {
-    return {
-      user: null,
-      showAuthDialog: false,
-      message: "",
-      messageSent: false
-    };
-  },
+onAuthStateChanged(auth, (userState) => {
+  isUserSignedIn.value = !!userState;
+});
 
-  created() {
-    onAuthStateChanged(auth, (user) => {
-      this.user = user;
-      this.onAuthChanged(user);
-    });
-  },
+function handleSendClick() {
+  if (isUserSignedIn.value) { 
+    if (message.value.trim() !== '') {
+      emit('send', message.value.trim())
+      message.value = ''
+    }
+  } else {
+    toast.error('Please sign in to send a message.')
+  }
+}
 
-  methods: {
-    async sendMessage() {
-      const messageText = this.message.trim(); 
+function handleClearChat() {
+  emit('clear-chat'); 
+}
 
-      if (messageText === '') {
-        return;
-      }
+function handleKeyPress(event: KeyboardEvent) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    handleSendClick();
+  }
+}
 
-      if (!this.user) {
-        this.showAuthDialog = true;
-        return;
-      }
-
-      this.messageSent = true;
-      const prompt = messageText;
-      this.message = '';
-      
-      try {
-        this.$emit("message-sent", prompt, 'user');
-        
-        const aiResponse = await sendPrompt(prompt);
-
-        this.$emit("message-received", aiResponse, 'ai');
-      } catch (error) {
-        console.error("Error sending message.");
-      }
-    },
-
-    addNewLine() {
-      this.message += "\n";
-    },
-
-    startNewConversation() {
-      this.$emit('clear-conversation');
-      this.messageSent = false;
-    },
-
-    onAuthChanged(user) {
-      this.user = user;
-    },
-  },
-};
 </script>
+
+<template>
+  <div class="fixed inset-x-0 bottom-0 bg-gradient-to-b from-muted/10 from-10% to-muted/30 to-50%">
+    <div class="mx-auto sm:max-w-2xl sm:px-4">
+      <div class="space-y-4 border-t bg-background px-4 py-2 shadow-lg sm:rounded-t-xl sm:border md:py-4">
+        <div class="relative">
+          <div class="flex items-center">
+            <Button
+              className="mr-4"
+              size="icon"
+              @click="handleClearChat"
+            >
+              <PlusCircle class="h-5 w-5"/>
+            </Button>
+            <Textarea
+              v-model="message"
+              @keypress="handleKeyPress"
+              tabindex="0"
+              rows="1"
+              placeholder="Type a message..."
+              spellcheck="false"
+              class="w-full resize-none bg-transparent px-4 py-[1.3rem] focus-within:outline-none"
+            />
+            <Button
+              @click="handleSendClick"
+              className="ml-4"
+              size="icon"
+            >
+              <Send class="h-5 w-5"/>
+            </Button>
+          </div>
+          <SiteFooter />
+        </div>
+      </div>
+    </div>
+  </div>
+</template>

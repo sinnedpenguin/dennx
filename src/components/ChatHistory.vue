@@ -1,93 +1,100 @@
-<template>
-  <v-container class="chat-history">
-    <h1 class="text-h6 text-center">Chat History</h1>
-    <v-divider></v-divider>
-    <v-list class="chat-history">
-      <v-list-item v-for="(conversation, index) in conversations" :key="index">
-        <v-row align="center">
-          <v-col cols="9" @click="selectConversation(conversation)">
-            <v-list-item-title>{{ conversation.title }}</v-list-item-title>
-          </v-col>
-          <v-col cols="3">
-            <v-icon @click.stop="deleteConversation(conversation.id)">mdi-delete</v-icon>
-          </v-col>
-        </v-row>
-      </v-list-item>
-    </v-list>
-  </v-container>
-</template>
+<script setup lang="ts">
+import { ref } from 'vue';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
+import { Button } from '@/components/ui/button'
+import { History } from 'lucide-vue-next';
+import {  
+  collection, 
+  query, 
+  where, 
+  getDocs,
+  deleteDoc,
+  doc
+} from "firebase/firestore";
+import { db } from '@/lib/firebase';
+import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { X } from 'lucide-vue-next';
 
-<script>
-import { auth, db } from "@/plugins/firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import { collection, query, where, getDocs, doc, deleteDoc } from "firebase/firestore";
+interface Chat {
+  title: string;
+  [key: string]: any;
+}
 
-export default {
-  data() {
-    return {
-      conversations: [],
-    };
-  },
+const chats = ref<Chat[]>([]);
+const auth = getAuth();
+const emit = defineEmits(['chat-selected']);
 
-  created() {
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        this.fetchConversations(user.uid);
-      }
+onAuthStateChanged(auth, user => {
+  if (user) {
+    const chatsRef = collection(db, 'chats');
+    const q = query(chatsRef, where('userId', '==', user.uid));
+
+    getDocs(q).then(querySnapshot => {
+      chats.value = querySnapshot.docs.map(doc => {
+        const chatData = doc.data();
+        const messages = chatData.messages;
+        const userMessage = messages.find((message: { sender: string; }) => message.sender === 'user');
+        let title = '';
+
+        if (userMessage) {
+          title = userMessage.text.split(' ').slice(0, 5).join(' ');
+        }
+
+        return { id: doc.id, ...chatData, title };
+      }) as Chat[];
+    }).catch(error => {
+      console.error('Error fetching chats:', error);
     });
-  },
-
-  methods: {
-    async fetchConversations(userId) {
-      const q = query(collection(db, 'conversations'), where('userId', '==', userId));
-      const querySnapshot = await getDocs(q);
-      this.conversations = querySnapshot.docs.map((doc) => ({
-        id: doc.id, 
-        title: doc.data().title,
-        messages: doc.data().messages,
-      }));
-    },
-
-    async deleteConversation(conversationId) {
-      try {
-        const conversationRef = doc(db, 'conversations', conversationId);
-        await deleteDoc(conversationRef);
-
-        this.conversations = this.conversations.filter((conversation) => conversation.id !== conversationId);
-        window.location.reload();
-      } catch (error) {
-        console.error("Error deleting conversation.");
-      }
-    },
-
-    selectConversation(conversation) {
-      this.$emit('conversation-selected', conversation);
-    },
+  } else {
+    chats.value = [];
   }
-};
+});
+
+function handleSelectChat(chat: Chat) {
+  emit('chat-selected', { messages: chat.messages, id: chat.id });
+}
+
+async function deleteChat(chat: Chat) {
+  try {
+    await deleteDoc(doc(db, 'chats', chat.id));
+    chats.value = chats.value.filter(c => c.id !== chat.id);
+  } catch (error) {
+    console.error('Error deleting chat:', error);
+  }
+}
+
 </script>
 
-<style scoped>
-.chat-history {
-  max-height: 100%;
-  overflow-y: auto;
-}
-
-.chat-history::-webkit-scrollbar {
-  width: 8px; 
-}
-
-.chat-history::-webkit-scrollbar-thumb {
-  background-color: lightgray; 
-  border-radius: 6px; 
-}
-
-.chat-history::-webkit-scrollbar-thumb:hover {
-  background-color: darkgray;
-}
-
-.v-list-item:hover {
-  background-color: lightgray;
-  cursor: pointer;
-}
-</style>
+<template>
+  <Sheet>
+    <SheetTrigger>
+      <Button variant="ghost" class="mr-4">
+        <History class="w-5 h-5" />
+      </Button>
+    </SheetTrigger>
+    <SheetContent :side="'left'">
+      <SheetHeader>
+        <SheetTitle class="my-4">Chat History</SheetTitle>
+      </SheetHeader>
+      <hr />
+      <div class="my-4">
+        <div v-for="(chat, index) in chats" :key="index">
+          <div class="flex items-center justify-between mb-2">
+            <Button variant="ghost" @click="handleSelectChat(chat)" class="w-full">
+              {{ chat.title }}
+            </Button>
+            <Button variant="ghost" @click="deleteChat(chat)">
+              <X class="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </SheetContent>
+  </Sheet>
+</template>
