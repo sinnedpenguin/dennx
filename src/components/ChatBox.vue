@@ -29,20 +29,6 @@ onMounted(() => {
     }
   });
 
-  document.addEventListener('click', event => {
-    if ((event.target as HTMLElement).classList.contains('copy-button')) {
-      const button = event.target as HTMLElement;
-      const preElement = button.previousElementSibling as HTMLElement;
-      if (preElement) {
-        navigator.clipboard.writeText(preElement.innerText);
-        button.textContent = 'Copied!';
-        setTimeout(() => {
-          button.textContent = 'Copy';
-        }, 2000); 
-      }
-    }
-  });
-
   return unsubscribe;
 });
 
@@ -95,7 +81,6 @@ function handleClearChat() {
 
 function formatMessage(message: string) {
   let formattedMessage = message
-    .replace(/```(.*?)```/gs, '<div class="relative bg-primary text-white dark:text-black rounded-md"><pre style="font-size: 0.825rem;"><code>$1</code></pre><button class="absolute top-0 right-0 m-1 copy-button">Copy</button></div>')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\n/g, '<br />'); 
 
@@ -104,8 +89,7 @@ function formatMessage(message: string) {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 mx-4 mb-36">
-    <ChatHistory @chat-selected="onChatSelected" />
+  <div class="flex flex-col gap-4 mx-4 mb-32">
     <WelcomeMessage @send-prompt="handleSend" v-if="messages.length === 0" />
     <div
       v-for="(message, index) in messages"
@@ -123,6 +107,7 @@ function formatMessage(message: string) {
       <span class="animate-ping delay-150">.</span>
       <span class="animate-ping delay-300">.</span>
     </div>
+    <ChatHistory @chat-selected="onChatSelected" />
     <Input @send="handleSend" @clear-chat="handleClearChat" />
   </div>
 </template>

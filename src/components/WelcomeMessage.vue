@@ -22,9 +22,9 @@ onAuthStateChanged(auth, (userState) => {
 });
 
 const examplePrompts = [
-  'How to print the text "Hello World" in Java?',
-  'Write a haiku about the color blue in a language of your choice.',
   'Explain quantum physics in a pirate voice.',
+  'Imagine you are a time traveler. Narrate your adventures using song lyrics.',
+  'Write a haiku about the color blue in a language of your choice.',
 ]
 
 function handlePromptClick(prompt: string) {
@@ -42,7 +42,7 @@ function handlePromptClick(prompt: string) {
       <CardTitle>Hello, I'm DennX!</CardTitle>
       <CardDescription>Start a conversation with me by sending a message or by clicking the example prompts.</CardDescription>
     </CardHeader>
-    <CardContent class="flex flex-col gap-2 my-3">
+    <CardContent class="flex flex-col gap-4 my-3">
       <Button 
         v-for="(prompt, index) in examplePrompts" 
         :key="index" 
