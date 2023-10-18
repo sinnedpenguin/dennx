@@ -95,8 +95,8 @@ function handleClearChat() {
 
 function formatMessage(message: string) {
   let formattedMessage = message
-    .replace(/```(.*?)```/gs, '<div class="relative bg-primary text-white dark:text-black rounded-md"><pre><code>$1</code></pre><button class="absolute top-0 right-0 m-1 copy-button">Copy</button></div>') 
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') 
+    .replace(/```(.*?)```/gs, '<div class="relative bg-primary text-white dark:text-black rounded-md"><pre style="font-size: 0.875rem;"><code>$1</code></pre><button class="absolute top-0 right-0 m-1 copy-button">Copy</button></div>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\n/g, '<br />'); 
 
   return formattedMessage;
