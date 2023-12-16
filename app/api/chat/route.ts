@@ -40,9 +40,9 @@ export async function POST(req: Request) {
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
 
+  let text = '';
   (async () => {
     const result = await chat.sendMessageStream(messages[messages.length - 1].content);
-    let text = '';
   
     for await (const chunk of result.stream) {
       const chunkText = chunk.text();
@@ -51,31 +51,31 @@ export async function POST(req: Request) {
     }
   
     await writer.close();
-  
-    const id = json.id ?? nanoid();
-    const createdAt = new Date().toISOString();
-    const path = `/chat/${id}`;
-  
-    const assistantReply = {
-      content: text,
-      role: 'model',
-    };
-  
-    const payload = {
-      id,
-      title: messages[0].content.substring(0, 100),
-      userId,
-      createdAt,
-      path,
-      messages: [...messages, assistantReply],
-    };
-  
-    await kv.hmset(`chat:${id}`, payload);
-    await kv.zadd(`user:chat:${userId}`, {
-      score: new Date(createdAt).getTime(), 
-      member: `chat:${id}`,
-    });
   })();
 
-  return new Response(readable, { status: 200, headers: { 'Content-Type': 'text/plain' } });
+  const id = json.id ?? nanoid();
+  const createdAt = new Date().toISOString();
+  const path = `/chat/${id}`;
+
+  const assistantReply = {
+    content: text,
+    role: 'model',
+  };
+
+  const payload = {
+    id,
+    title: messages[0].content.substring(0, 100),
+    userId,
+    createdAt,
+    path,
+    messages: [...messages, assistantReply],
+  };
+
+  await kv.hmset(`chat:${id}`, payload);
+  await kv.zadd(`user:chat:${userId}`, {
+    score: new Date(createdAt).getTime(), 
+    member: `chat:${id}`,
+  });
+
+  return new Response(readable);
 }
