@@ -1,4 +1,4 @@
-## DennX
+# DennX
 
 DennX is an AI chatbot powered by Google's Gemini Pro.
 
